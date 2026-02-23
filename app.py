@@ -10,11 +10,19 @@ from transformers import pipeline
 # ==============================
 st.set_page_config(page_title="Crypto AI Dashboard", layout="wide")
 
+# DARK THEME
 st.markdown("""
     <style>
     .stApp {
         background-color: #0E1117;
         color: white;
+    }
+    div.stButton > button:first-child {
+        background-color: #00C853;
+        color:white;
+        height:3em;
+        width:100%;
+        font-size:18px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -22,14 +30,13 @@ st.markdown("""
 st.title("🚀 Crypto AI Trading Dashboard")
 
 # ==============================
-# SIDEBAR SETTINGS
+# SIDEBAR
 # ==============================
 st.sidebar.header("⚙ Settings")
-
 coin = st.sidebar.selectbox("Select Crypto", ["BTC-USD", "ETH-USD", "SOL-USD"])
 
 # ==============================
-# LOAD LIVE DATA
+# LOAD DATA
 # ==============================
 data = yf.download(coin, period="5y")
 data.columns = data.columns.get_level_values(0)
@@ -41,7 +48,6 @@ data['Returns'] = data['Close'].pct_change()
 data['MA_7'] = data['Close'].rolling(7).mean()
 data['MA_30'] = data['Close'].rolling(30).mean()
 data['Volatility'] = data['Returns'].rolling(7).std()
-
 data.dropna(inplace=True)
 
 # ==============================
@@ -68,50 +74,55 @@ ax.set_title(f"{coin} Closing Price")
 st.pyplot(fig)
 
 # ==============================
-# ARIMA PREDICTION
+# PREDICTION SECTION
 # ==============================
 st.subheader("🔮 Future Prediction")
 
-series = data['Close']
+predict_btn = st.button("Predict Next 30 Days")
 
-model_arima = ARIMA(series, order=(5,1,0))
-model_fit = model_arima.fit()
+if predict_btn:
 
-arima_pred = model_fit.forecast(steps=30)
+    series = data['Close']
 
-st.success("Prediction Generated!")
+    model_arima = ARIMA(series, order=(5,1,0))
+    model_fit = model_arima.fit()
 
-# =======================
-# PREDICTION GRAPH
-# =======================
-fig2, ax2 = plt.subplots(figsize=(12,5))
-ax2.plot(arima_pred)
-ax2.set_title("Next 30 Days Forecast")
-st.pyplot(fig2)
+    arima_pred = model_fit.forecast(steps=30)
 
-# =======================
-# SHOW PREDICTED VALUES
-# =======================
+    st.success("Prediction Generated!")
 
-next_day_price = arima_pred.iloc[0]
-last_day_price = arima_pred.iloc[-1]
+    # Graph
+    fig2, ax2 = plt.subplots(figsize=(12,5))
+    ax2.plot(arima_pred)
+    ax2.set_title("Next 30 Days Forecast")
+    st.pyplot(fig2)
 
-colA, colB = st.columns(2)
+    # Price Metrics
+    next_day_price = arima_pred.iloc[0]
+    last_day_price = arima_pred.iloc[-1]
 
-colA.metric("Next Day Predicted Price", f"${next_day_price:,.2f}")
-colB.metric("30th Day Predicted Price", f"${last_day_price:,.2f}")
+    colA, colB = st.columns(2)
+    colA.metric("Next Day Price", f"${next_day_price:,.2f}")
+    colB.metric("30th Day Price", f"${last_day_price:,.2f}")
 
-# =======================
-# FULL TABLE
-# =======================
+    # ==============================
+    # CREATE FUTURE DATES (FIXED)
+    # ==============================
+    pred_df = pd.DataFrame(arima_pred)
+    pred_df.columns = ["Predicted Price"]
 
-pred_df = pd.DataFrame(arima_pred)
-pred_df.columns = ["Predicted Price"]
-pred_df.index = pred_df.index.date
-pred_df["Predicted Price"] = pred_df["Predicted Price"].map(lambda x: f"${x:,.2f}")
+    future_dates = pd.date_range(
+        start=data.index[-1],
+        periods=len(pred_df)+1,
+        freq='D'
+    )[1:]
 
-st.subheader("📊 Full 30-Day Prediction")
-st.dataframe(pred_df, use_container_width=True, height=300)
+    pred_df.index = future_dates
+
+    pred_df["Predicted Price"] = pred_df["Predicted Price"].map(lambda x: f"${x:,.2f}")
+
+    st.subheader("📊 Full 30-Day Prediction")
+    st.dataframe(pred_df, use_container_width=True, height=300)
 
 # ==============================
 # TRADING SIGNAL
@@ -126,52 +137,15 @@ else:
 st.metric("Signal", signal)
 
 # ==============================
-# RISK LEVEL
+# RISK METER
 # ==============================
-st.subheader("⚠ Risk Meter")
+st.subheader("⚠ Market Risk")
 
 if data['Volatility'].iloc[-1] > 0.02:
     risk = "HIGH"
 else:
     risk = "LOW"
 
-st.metric("Market Risk", risk)
+st.metric("Risk Level", risk)
 
-# ==============================
-# SENTIMENT ANALYSIS
-# ==============================
-st.subheader("🧠 News Sentiment")
-
-user_news = st.text_input("Enter crypto news headline")
-
-if user_news:
-
-    sentiment_model = pipeline("sentiment-analysis")
-    result = sentiment_model(user_news)[0]
-
-    label = result['label']
-    score = result['score']
-
-    if label == "POSITIVE":
-        sentiment_score = score
-    else:
-        sentiment_score = -score
-
-    st.metric("Sentiment", label)
-    st.metric("Sentiment Score", round(sentiment_score,3))
-import requests
-
-st.subheader("📰 Live Crypto News")
-
-api_key = "bcf5ccb3ab7d456c83a7ff782d1ed725"
-
-url = f"https://newsapi.org/v2/everything?q=cryptocurrency&apiKey={api_key}"
-
-news_data = requests.get(url).json()
-
-articles = news_data['articles'][:5]
-
-for article in articles:
-    st.write("###", article['title'])
-    st.write(article['source']['name'])
-    st.write(article['url'])
+    
