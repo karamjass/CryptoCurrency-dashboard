@@ -1,0 +1,16 @@
+numpy
+pandas
+matplotlib
+yfinance
+math-sqrt
+tensorflow-keras-layers-Input
+tensorflow-keras-layers-Dense
+tensorflow-keras-layer-Dropout
+tensorflow-keras-callbacks-EarlyStopping
+tensorflow-keras-layers-LSTM
+tensorflow-keras-optimizers-Adam
+scikit-learn
+seaborn
+MeanAbsoluteError
+RMSE
+MinMaxScaler
