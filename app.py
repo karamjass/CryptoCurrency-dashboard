@@ -59,6 +59,5 @@ try:
         ax.grid(alpha=0.3)
         st.pyplot(fig)
         plt.close(fig)
-
 except Exception as e:
     st.error(f"Error: {e}")
